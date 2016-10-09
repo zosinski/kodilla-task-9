@@ -3,36 +3,37 @@ $(function(){
 	var carousel = $('#carousel');
 	var carouselList = $('#carousel ul');
 	var slideWidth = 1200;
-	var carouselSpeed = 3000;
-	var slideSpeed = 500;
+	var carouselSpeed = 4000; // interwał pomiędzy przewinięciem slajdów
+	var slideSpeed = 500; // czas animacji przewijania slajdu
 	var currentSlideId = 0;
 	
 	setCarouselWidth();
 	createCarouselControls();
-	var carouselInterval = setInterval(slideToTheRight, carouselSpeed);
-	// slideToId(10);
+	var carouselInterval = setInterval(function(){slide('left')}, carouselSpeed);
 	
+	// Przypisuje kontenerowi ze slajdami szerokość
+	// równą iloczynowi liczby slajdów i stałej szerokości pojedyczego slajdu
 	function setCarouselWidth() {
 		var carouselWidth = carouselList.find('li').length * slideWidth;
-		console.log(carouselWidth);
 		carouselList.css({width: carouselWidth});
 	}
 
 	function createCarouselControls() {
-
 		createArrowControls();
 		createSlideMiniatures();
 	}
 
+	// Tworzy i dodaje strzałki do przewijania
 	function createArrowControls() {
 		var leftArrow = $('<i>', {class: 'fa fa-chevron-left left-arrow'});
 		var rightArrow = $('<i>', {class: 'fa fa-chevron-right right-arrow'}); 
 		carousel.append(leftArrow);
 		carousel.append(rightArrow);
-		leftArrow.click(slideToTheRight_manual);
-		rightArrow.click(slideToTheLeft_manual);
+		leftArrow.click(function(){manualSlide('right')});
+		rightArrow.click(function(){manualSlide('left')});
 	}
 
+	// Tworzy i dodaje do DOM miniatury slajdów na podstawie listy UL z grafikami w karuzeli
 	function createSlideMiniatures() {
 		var miniatureList = $('<ul>', {class: 'slide-miniature-list'});
 		carouselList.find('li').each(function(index) {
@@ -45,12 +46,14 @@ $(function(){
 			slideMiniature.append(slideImg);
 			miniatureList.append(slideMiniature);
 			console.log(slideMiniature);
-			slideMiniature.click(function(){slideToId(index)});
+			// slideMiniature.click(function(){slideToId(index)});
+			slideMiniature.click(function(){goToSlideId(index)});
 		});
 		carousel.after(miniatureList);
 		setCurrentSlideMiniature(0, 1);
 	}
 
+	// Wyróżnienie miniatury odpowiadającej bieżącemu slajdowi
 	function setCurrentSlideMiniature(targetSlideId, previousSlideId) {
 		var targetMiniatureId = '#slide-' + targetSlideId;
 		var previousMiniatureId = '#slide-' + previousSlideId;
@@ -60,38 +63,31 @@ $(function(){
 		$(previousMiniatureId).removeClass('current-slide');
 	}
 
-	function slideToTheLeft_manual() {
-		clearInterval(carouselInterval);
-		slideToTheLeft();
-		carouselInterval = setInterval(slideToTheLeft, carouselSpeed);
-	}
-	function slideToTheLeft() {
+	function slide(slideDirection) {
 		var previousSlideId = currentSlideId;
 		
-		carouselList.animate({marginLeft: -slideWidth}, slideSpeed, moveFirstSlideToTheEnd);
-		currentSlideId < carouselList.find('li').length - 1 ? currentSlideId++ : currentSlideId = 0;
+		if (slideDirection == 'left') {
+			carouselList.animate({marginLeft: -slideWidth}, slideSpeed, moveFirstSlideToTheEnd);
+			currentSlideId < carouselList.find('li').length - 1 ? currentSlideId++ : currentSlideId = 0;		
+		} else {
+			moveLastSlideToTheBeginning();
+			carouselList.css({marginLeft: '-1200px'});
+			carouselList.animate({marginLeft: '0'}, slideSpeed);
+			currentSlideId > 0 ? currentSlideId-- : currentSlideId = carouselList.find('li').length - 1;
+		};
 	
-		console.log(currentSlideId);
 		setCurrentSlideMiniature(currentSlideId, previousSlideId);
 	}
 
-	function slideToTheRight_manual() {
+	// funkcja wywoływana przez strzałki, kasuje interwał, przewija slajd
+	// i wznawia przewijanie w kieruku klikniętej strzałki
+	function manualSlide(slideDirection) {
 		clearInterval(carouselInterval);
-		slideToTheRight();
-		carouselInterval = setInterval(slideToTheRight, carouselSpeed);
-	}
-	function slideToTheRight() {
-		var previousSlideId = currentSlideId;
-	
-		moveLastSlideToTheBeginning();
-		carouselList.css({marginLeft: '-1200px'});
-		carouselList.animate({marginLeft: '0'}, slideSpeed);
-		currentSlideId > 0 ? currentSlideId-- : currentSlideId = carouselList.find('li').length - 1;
-	
-		console.log(currentSlideId);
-		setCurrentSlideMiniature(currentSlideId, previousSlideId);
+		slide(slideDirection);
+		carouselInterval = setInterval(function(){slide(slideDirection)}, carouselSpeed);
 	}
 
+	// Funkcja wywoływana przez kliknięcie na miniaturę. Wersja 1 
 	function slideToId(targetSlideId) {
 		console.log('targetId:' + targetSlideId);
 		console.log('currentId:' + currentSlideId);
@@ -99,66 +95,72 @@ $(function(){
 		if (currentSlideId == targetSlideId) { 
 			console.log('ten sam slide');
 			return; 
-		} else {
-			clearInterval(carouselInterval);
-			var carouselSpeed_memory = carouselSpeed;
-			var slideSpeed_memory = slideSpeed;
-			carouselSpeed = 0;
-			slideSpeed = 50;
 		};
 
-		while (currentSlideId < targetSlideId) {
-			console.log(currentSlideId, targetSlideId, 'przewiń w lewo');
-			slideToTheLeft();
-			console.log(currentSlideId, targetSlideId);
-		};
-		
-		while (currentSlideId > targetSlideId) {
-			console.log(currentSlideId, targetSlideId, 'przewiń w prawo');
-			slideToTheRight();
-			console.log(currentSlideId, targetSlideId);
+		clearInterval(carouselInterval);
+		var carouselSpeed_memory = carouselSpeed;
+		var slideSpeed_memory = slideSpeed;
+		carouselSpeed = 0;
+		slideSpeed = 50;
+
+		// KONRAD: jaka składania żeby móc zadeklarować slideDirection?
+		currentSlideId < targetSlideId ? slideDirection = 'left' : slideDirection = 'right';
+
+		while (currentSlideId != targetSlideId) {
+			slide('slideDirection');
 		};
 
 		carouselSpeed = carouselSpeed_memory;
 		slideSpeed = slideSpeed_memory;
-		carouselInterval = setInterval(slideToTheLeft, carouselSpeed);
+		carouselInterval = setInterval(function(){slide(slideDirection)}, carouselSpeed);
 	}
 
 	// Aleternatywna metoda przewijania po kliknięciu na miniaturę. Wybiera najkrótszą drogę.
-	// function goToSlideId(targetSlideId) {
-	// 	console.log('targetId:' + targetSlideId);
-	// 	console.log('currentId:' + currentSlideId);
+	function goToSlideId(targetSlideId) {
+		console.log('targetId:' + targetSlideId);
+		console.log('currentId:' + currentSlideId);
 
-	// 	if (targetSlideId == currentSlideId) {
-	// 		console.log('ten sam slide');
-	// 	} else {
-	// 		clearInterval(carouselInterval);
+		if (targetSlideId == currentSlideId) {
+			console.log('ten sam slide');
+			return;
+		};
 
-	// 		if currentSlideId > targetSlideId {
-	// 			var distanceToLeft = currentSlideId - targetSlideId;
-	// 			var distanceToRight = carouselList.find('li').length - 1 - 2 * currentSlideId + targetSlideId;
-	// 			distanceToRight < distanceToLeft ? var slideDirection = 'left' : var slideDirection = 'right'; 
-	// 		} else {
-	// 			var distanceToLeft = currentSlideId + carouselList.find('li').length - 1 - targetSlideId;
-	// 			var distanceToRight = targetSlideId - currentSlideId;
-	// 			distanceToRight < distanceToLeft ? var slideDirection = 'left' : var slideDirection = 'right';
-	// 		};
+		clearInterval(carouselInterval);
+		var carouselSpeed_memory = carouselSpeed;
+		var slideSpeed_memory = slideSpeed;
+		carouselSpeed = 0;
+		slideSpeed = 50;
 
-	// 		if (slideDirection == 'right') {
-	// 			for (i = 1; i < ; i++) { 
+		if (currentSlideId > targetSlideId) {
+			var distanceToLeft = currentSlideId - targetSlideId;
+			var distanceToRight = carouselList.find('li').length - currentSlideId + targetSlideId;
+		} else {
+			var distanceToLeft = currentSlideId + carouselList.find('li').length - targetSlideId;
+			var distanceToRight = targetSlideId - currentSlideId;
+		};
+		
+		if (distanceToRight < distanceToLeft) {
+			var slideDirection = 'left'; 
+			var distance = distanceToRight;
+		} else {
+			var slideDirection = 'right'; 
+			var distance = distanceToLeft;
+		}
+		console.log('distance: ', distance, 'direction: ', slideDirection);
 
-	// 			}
-	// 		}
-	// 	}
-	// }
+		for (i = 0; i < distance ; i++) { 
+			slide(slideDirection);
+		};
+		
+		carouselSpeed = carouselSpeed_memory;
+		slideSpeed = slideSpeed_memory;
+		carouselInterval = setInterval(function(){slide(slideDirection)}, carouselSpeed);
+	}
 
 	function moveFirstSlideToTheEnd() {
-		// var firstSlide = carouselList.find('li:first');
 		var firstSlide = carouselList.find('li:first');
-		// var lastSlide = $(".carousel ul").find('li:last')
+		
 		carouselList.append(firstSlide);
-		// $(".carousel ul").append(firstSlide);
-		// lastSlide.after(firstSlide);
 		carouselList.css({marginLeft: 0});
 	}
 
@@ -167,8 +169,6 @@ $(function(){
 		var firstSlide = carouselList.find('li:first');
 
 		firstSlide.before(lastSlide);
-		// carouselList.css({marginRight: 0})
-		// carouselList.css({marginRight: 0});
 	}
 
 });
